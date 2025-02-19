@@ -215,6 +215,7 @@ namespace FACS01.Utilities
             Regex ParticleSystemRegex = new(@"^ParticleSystem_0x([0-F]+)_([a-zA-Z0-9]+)");
             Regex VisualEffectRegex = new(@"^VisualEffect_0x([0-F]+)_([a-zA-Z0-9]+)");
             Regex UserDefinedRegex = new(@"^UserDefined_0x([0-F]+)_([a-zA-Z0-9]+)");
+            Regex TypeTreeRegex = new(@"^typetree_0x([0-F]+)_([a-zA-Z0-9]+)");
 
             bool analyzingCBObjRef = false;
             AnimationClip analyzingAC = null;
@@ -399,6 +400,12 @@ namespace FACS01.Utilities
             {
                 var paths = GO_Paths[rootGO][analyzingNEWPATH];
                 var hasbrokenKW = false; var hasbrokenHash = false; var brokenHash = 0U;
+                var typeTreeMatch = TypeTreeRegex.Match(analyzingPROPERTYNAME);
+                if (typeTreeMatch.Success)
+                {
+                    hasbrokenKW = true;
+                    hasbrokenHash = uint.TryParse(typeTreeMatch.Groups[1].Value, hexStyle, hexCulture, out brokenHash);
+                }
                 if (typeof(Renderer).IsAssignableFrom(analyzingTYPE))
                 {
                     if (analyzingPROPERTYNAME.StartsWith("material."))
