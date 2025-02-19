@@ -24,6 +24,8 @@ namespace FACS01.Utilities
 
         private static string Results = null;
 
+        private static bool AltMonoBehaviour = false;
+
         [MenuItem("FACS Utils/Repair Project/Fix Animations", false, 1054)]
         [MenuItem("FACS Utils/Animation/Fix Animations", false, 1101)]
         private static void ShowWindow()
@@ -66,6 +68,8 @@ namespace FACS01.Utilities
             EditorGUILayout.BeginHorizontal();
             GUILayout.FlexibleSpace();
             EditorGUILayout.BeginVertical();
+            if (animationSources.Any(animS => animS.Count > 1))
+                AltMonoBehaviour = EditorGUILayout.Toggle("Alt script method", AltMonoBehaviour);
             if (animationRoots.Count > 1 &&
                 GUILayout.Button("Auto Detect", FacsGUIStyles.Button, GUILayout.Height(20), GUILayout.MaxWidth(windowWidth * 0.75f))) AutoDetect();
             if (animationSources.Any(animS => animS.Count > 1) &&
@@ -216,6 +220,7 @@ namespace FACS01.Utilities
             Regex VisualEffectRegex = new(@"^VisualEffect_0x([0-F]+)_([a-zA-Z0-9]+)");
             Regex UserDefinedRegex = new(@"^UserDefined_0x([0-F]+)_([a-zA-Z0-9]+)");
             Regex TypeTreeRegex = new(@"^typetree_0x([0-F]+)_([a-zA-Z0-9]+)");
+            Regex MonoBehaviourRegex = new(@"^script_0x([0-F]+)_([a-zA-Z0-9]+)");
 
             bool analyzingCBObjRef = false;
             AnimationClip analyzingAC = null;
@@ -400,12 +405,25 @@ namespace FACS01.Utilities
             {
                 var paths = GO_Paths[rootGO][analyzingNEWPATH];
                 var hasbrokenKW = false; var hasbrokenHash = false; var brokenHash = 0U;
+
+                // Check for typetree pattern
                 var typeTreeMatch = TypeTreeRegex.Match(analyzingPROPERTYNAME);
                 if (typeTreeMatch.Success)
                 {
                     hasbrokenKW = true;
                     hasbrokenHash = uint.TryParse(typeTreeMatch.Groups[1].Value, hexStyle, hexCulture, out brokenHash);
                 }
+                // Check for MonoBehaviour pattern
+                else if (AltMonoBehaviour)
+                {
+                    var scriptMatch = MonoBehaviourRegex.Match(analyzingPROPERTYNAME);
+                    if (scriptMatch.Success)
+                    {
+                        hasbrokenKW = true;
+                        hasbrokenHash = uint.TryParse(scriptMatch.Groups[1].Value, hexStyle, hexCulture, out brokenHash);
+                    }
+                }
+
                 if (typeof(Renderer).IsAssignableFrom(analyzingTYPE))
                 {
                     if (analyzingPROPERTYNAME.StartsWith("material."))
@@ -461,7 +479,7 @@ namespace FACS01.Utilities
                         hasbrokenHash = uint.TryParse(match.Groups[1].Value, hexStyle, hexCulture, out brokenHash);
                     }
                 }
-                else if (typeof(MonoBehaviour).IsAssignableFrom(analyzingTYPE))
+                else if (typeof(MonoBehaviour).IsAssignableFrom(analyzingTYPE) && !AltMonoBehaviour)
                 {
                     if (analyzingPROPERTYNAME.StartsWith("script_"))
                     {
